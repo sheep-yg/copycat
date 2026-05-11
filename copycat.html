@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Copycat</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#E8402A;--bg:#0F0E0D;--elevated:#1E1C1A;
+  --warm:#F2EDE8;--muted:#6B6560;--border:#2E2B28;--green:#4CAF7D;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+.root{
+  background:var(--bg);height:100vh;width:100vw;
+  display:flex;flex-direction:column;align-items:center;
+  font-family:'DM Sans',sans-serif;color:var(--warm);
+  overflow:hidden;position:fixed;inset:0;
+}
+.screen{display:none;width:100%;height:100%;flex-direction:column;align-items:center}
+.screen.active{display:flex}
+
+/* ── ONBOARDING ── */
+.ob-wrap{
+  width:100%;height:100%;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:0 32px;
+}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;letter-spacing:-.3px;margin-bottom:36px}
+.logo em{color:var(--red);font-style:italic;font-family:'DM Sans',sans-serif;font-weight:400}
+.anim-stage{width:130px;height:160px;position:relative;margin-bottom:30px}
+.ob-ref{
+  position:absolute;inset:0;border-radius:14px;
+  background:linear-gradient(135deg,#2a2520,#1e1a16);
+  border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--muted);
+}
+.ob-cam{
+  position:absolute;inset:0;border-radius:14px;
+  background:rgba(15,14,13,.52);border:1.5px solid var(--red);
+  animation:camFade 2.8s ease-in-out infinite;
+}
+@keyframes camFade{
+  0%{opacity:0;transform:translateY(16px)}28%{opacity:1;transform:translateY(0)}
+  72%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-8px)}
+}
+.ob-grid{
+  position:absolute;inset:0;border-radius:12px;
+  background-image:linear-gradient(rgba(242,237,232,.06) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(242,237,232,.06) 1px,transparent 1px);
+  background-size:33.33% 33.33%;
+}
+.ob-pulse{
+  position:absolute;top:9px;right:10px;width:7px;height:7px;
+  background:var(--red);border-radius:50%;animation:pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
+.ob-h{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;text-align:center;line-height:1.2;margin-bottom:10px}
+.ob-s{font-size:13px;color:var(--muted);text-align:center;line-height:1.65;margin-bottom:36px}
+.ob-cta{
+  width:100%;padding:16px;background:var(--red);border-radius:14px;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:15px;
+  color:#fff;text-align:center;cursor:pointer;border:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.ob-cta:active{opacity:.85}
+.ob-skip{margin-top:14px;font-size:12px;color:var(--muted);text-align:center;cursor:pointer;padding:8px}
+
+/* ── CAMERA ── */
+.cam-wrap{width:100%;height:100%;position:relative;background:#000;overflow:hidden}
+#videoEl{width:100%;height:100%;object-fit:cover;display:block}
+.cam-overlay{position:absolute;inset:0;display:flex;flex-direction:column}
+.ratio-frame{position:absolute;border-radius:14px;overflow:hidden;pointer-events:none}
+.ratio-frame.on{border:2px solid rgba(232,64,42,.8);box-shadow:0 0 16px rgba(232,64,42,.2)}
+#refCanvas{position:absolute;border-radius:12px;pointer-events:none;opacity:0;transition:opacity .3s}
+
+/* top bar */
+.top-bar{
+  position:absolute;top:0;left:0;right:0;
+  padding:env(safe-area-inset-top, 12px) 14px 10px;
+  padding-top:max(env(safe-area-inset-top),12px);
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent);z-index:10;
+}
+.flip-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(15,14,13,.75);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;cursor:pointer;flex-shrink:0;color:var(--warm);
+  -webkit-tap-highlight-color:transparent;
+}
+.ratio-row{display:flex;gap:4px;flex:1;justify-content:center}
+.r-chip{
+  padding:5px 10px;border-radius:10px;font-size:10px;font-weight:600;
+  background:rgba(15,14,13,.75);border:1px solid var(--border);
+  color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.r-chip.on{background:var(--red);border-color:var(--red);color:#fff}
+.ov-toggle{
+  padding:5px 11px;border-radius:14px;
+  background:rgba(15,14,13,.75);border:1px solid var(--border);
+  display:flex;align-items:center;gap:5px;
+  font-size:10px;color:var(--muted);cursor:pointer;flex-shrink:0;
+  font-family:'DM Sans',sans-serif;transition:all .2s;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+.ov-toggle.on{border-color:var(--red);color:var(--warm)}
+.pip{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .2s}
+.pip.on{background:var(--red);animation:pulse 1.6s infinite}
+
+/* slider */
+.slider-wrap{
+  position:absolute;z-index:10;left:16px;right:16px;
+  display:flex;align-items:center;gap:8px;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.slider-wrap.vis{opacity:1;pointer-events:auto}
+#opSlider{
+  flex:1;-webkit-appearance:none;appearance:none;height:4px;
+  border-radius:2px;background:var(--border);outline:none;
+}
+#opSlider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:#fff;box-shadow:0 0 0 2px var(--red);cursor:pointer;
+}
+.sl-val{font-size:11px;color:var(--muted);min-width:30px;text-align:right}
+
+/* bottom bar */
+.bottom-bar{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:0 24px;
+  padding-bottom:max(env(safe-area-inset-bottom),24px);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(to top,rgba(0,0,0,.6),transparent);z-index:10;
+  min-height:100px;
+}
+.side-btn{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.side-icon{
+  width:46px;height:46px;border-radius:12px;
+  background:rgba(30,28,26,.88);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:var(--warm);overflow:hidden;
+}
+.side-icon.round{border-radius:50%}
+.side-label{font-size:9px;color:var(--muted)}
+#galleryThumb{width:100%;height:100%;object-fit:cover;display:none}
+#galleryEmoji{font-size:20px}
+.shutter{
+  width:70px;height:70px;border-radius:50%;background:var(--warm);
+  border:3px solid rgba(242,237,232,.3);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 6px rgba(242,237,232,.08);
+  cursor:pointer;transition:transform .1s;
+  -webkit-tap-highlight-color:transparent;
+}
+.shutter:active{transform:scale(.9)}
+.sh-in{width:56px;height:56px;border-radius:50%;background:var(--warm)}
+
+/* no camera */
+.no-cam{
+  position:absolute;inset:0;background:var(--bg);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:28px;text-align:center;gap:16px;
+}
+.no-cam-icon{font-size:44px}
+.no-cam-title{font-family:'Syne',sans-serif;font-weight:700;font-size:18px}
+.no-cam-desc{font-size:12px;color:var(--muted);line-height:1.7}
+.no-cam-cta{
+  padding:14px 28px;background:var(--red);border-radius:13px;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:14px;
+  color:#fff;cursor:pointer;border:none;-webkit-tap-highlight-color:transparent;
+}
+
+/* ── RESULT ── */
+.result-wrap{
+  width:100%;height:100%;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;
+  padding:max(env(safe-area-inset-top),48px) 22px max(env(safe-area-inset-bottom),28px);
+  overflow-y:auto;
+}
+#resultImg{
+  width:100%;border-radius:18px;margin-bottom:20px;
+  object-fit:cover;max-height:58vh;flex-shrink:0;
+}
+.result-actions{display:flex;flex-direction:column;gap:10px;width:100%}
+.btn-p{
+  width:100%;padding:16px;background:var(--red);border-radius:14px;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:14px;
+  color:#fff;text-align:center;cursor:pointer;border:none;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-p:active{opacity:.85}
+.btn-s{
+  width:100%;padding:14px;background:var(--elevated);
+  border:1px solid var(--border);border-radius:14px;
+  font-size:13px;color:var(--warm);text-align:center;
+  cursor:pointer;font-family:'DM Sans',sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-s:active{opacity:.7}
+.btn-t{font-size:12px;color:var(--muted);text-align:center;cursor:pointer;padding:8px 0}
+
+/* ── FEED MODAL ── */
+.feed-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);
+  display:none;align-items:flex-end;z-index:50;
+}
+.feed-backdrop.open{display:flex}
+.feed-sheet{
+  width:100%;background:#1a1816;border-radius:22px 22px 0 0;
+  max-height:78vh;display:flex;flex-direction:column;overflow:hidden;
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.feed-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;flex-shrink:0}
+.feed-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px 10px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.feed-title-txt{font-family:'Syne',sans-serif;font-weight:700;font-size:16px}
+.feed-close{
+  width:26px;height:26px;border-radius:50%;
+  background:var(--elevated);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--muted);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.cat-row{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+.cat-row::-webkit-scrollbar{display:none}
+.cat{
+  padding:4px 12px;border-radius:20px;font-size:10px;font-weight:600;
+  border:1px solid var(--border);color:var(--muted);white-space:nowrap;
+  cursor:pointer;font-family:'DM Sans',sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+.cat.on{background:var(--red);border-color:var(--red);color:#fff}
+.cat.dim{opacity:.3;pointer-events:none}
+.f-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:3px;
+  padding:3px 12px;overflow-y:auto;flex:1;
+}
+.f-card{
+  aspect-ratio:3/4;border-radius:10px;background:var(--elevated);
+  position:relative;overflow:hidden;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.f-card:active{opacity:.75}
+.f-card canvas{width:100%;height:100%;object-fit:cover;display:block}
+.f-use{
+  position:absolute;bottom:7px;right:7px;
+  background:var(--red);border-radius:10px;padding:4px 9px;
+  font-size:9px;font-weight:700;color:#fff;pointer-events:none;
+}
+.f-credit{text-align:center;font-size:9px;color:var(--muted);padding:8px 0 10px;border-top:1px solid var(--border);flex-shrink:0}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;left:16px;right:16px;
+  bottom:max(env(safe-area-inset-bottom, 24px), 24px);
+  background:#1e1c1a;border-radius:14px;
+  padding:13px 15px;display:flex;align-items:center;gap:10px;
+  font-size:12px;line-height:1.5;z-index:100;
+  transform:translateY(100px);opacity:0;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .3s;
+  border:1px solid var(--border);
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border-color:rgba(76,175,125,.4)}
+.t-ic{font-size:18px;flex-shrink:0}
+.t-msg strong{display:block;font-weight:600;margin-bottom:1px;font-size:13px}
+.t-msg span{font-size:11px;color:var(--muted)}
+
+#fileInput{display:none}
+</style>
+</head>
+<body>
+<div class="root">
+
+  <!-- ONBOARDING -->
+  <div class="screen active" id="screen-ob">
+    <div class="ob-wrap">
+      <div class="logo">Copy<em>cat</em></div>
+      <div class="anim-stage">
+        <div class="ob-ref">레퍼런스 사진</div>
+        <div class="ob-cam"><div class="ob-grid"></div><div class="ob-pulse"></div></div>
+      </div>
+      <div class="ob-h">레퍼런스 위에서<br>그대로 찍어요</div>
+      <div class="ob-s">저장만 하던 사진을<br>이제 직접 재현해요</div>
+      <button class="ob-cta" onclick="startCamera()">시작하기</button>
+      <div class="ob-skip" onclick="startCamera()">건너뛰기</div>
+    </div>
+  </div>
+
+  <!-- CAMERA -->
+  <div class="screen" id="screen-cam">
+    <div class="cam-wrap">
+      <video id="videoEl" autoplay playsinline muted></video>
+      <canvas id="refCanvas"></canvas>
+      <div class="ratio-frame" id="ratioFrame"></div>
+      <div class="cam-overlay">
+        <div class="top-bar">
+          <div class="flip-btn" onclick="flipCamera()">⟳</div>
+          <div class="ratio-row">
+            <div class="r-chip" onclick="setRatio(1,1,this)">1:1</div>
+            <div class="r-chip on" onclick="setRatio(4,5,this)">4:5</div>
+            <div class="r-chip" onclick="setRatio(9,16,this)">9:16</div>
+          </div>
+          <div class="ov-toggle" id="ovToggle" onclick="toggleOverlay()">
+            <div class="pip" id="pip"></div>
+            <span id="ovLabel">오버레이</span>
+          </div>
+        </div>
+        <div class="slider-wrap" id="sliderWrap" style="bottom:112px">
+          <span style="font-size:12px;color:var(--muted)">○</span>
+          <input type="range" id="opSlider" min="5" max="80" value="45" step="1" oninput="updateOpacity(this.value)">
+          <span class="sl-val" id="slVal">45%</span>
+        </div>
+        <div class="bottom-bar">
+          <div class="side-btn" onclick="document.getElementById('fileInput').click()">
+            <div class="side-icon" id="galleryIcon">
+              <img id="galleryThumb" alt="">
+              <span id="galleryEmoji">🖼️</span>
+            </div>
+            <div class="side-label" id="galleryLabel">갤러리</div>
+          </div>
+          <div class="shutter" onclick="capturePhoto()"><div class="sh-in"></div></div>
+          <div class="side-btn" onclick="openFeed()">
+            <div class="side-icon round">✨</div>
+            <div class="side-label">피드</div>
+          </div>
+        </div>
+      </div>
+      <div class="no-cam" id="noCam">
+        <div class="no-cam-icon">📷</div>
+        <div class="no-cam-title">카메라를 열 수 없어요</div>
+        <div class="no-cam-desc">브라우저에서 카메라 접근을<br>허용해줘야 찍을 수 있어요</div>
+        <button class="no-cam-cta" onclick="startCamera()">다시 시도하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="screen" id="screen-result">
+    <div class="result-wrap">
+      <img id="resultImg" alt="촬영 결과">
+      <div class="result-actions">
+        <button class="btn-p" onclick="shareInstagram()">📷 인스타그램에 공유</button>
+        <button class="btn-s" onclick="savePhoto()">사진 저장하기</button>
+        <div class="btn-t" onclick="goBack()">다시 찍기</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEED -->
+  <div class="feed-backdrop" id="feedBackdrop" onclick="closeFeedOutside(event)">
+    <div class="feed-sheet">
+      <div class="feed-handle"></div>
+      <div class="feed-hdr">
+        <span class="feed-title-txt">레퍼런스 고르기</span>
+        <div class="feed-close" onclick="closeFeed()">✕</div>
+      </div>
+      <div class="cat-row">
+        <div class="cat on">전체</div>
+        <div class="cat dim">여행</div>
+        <div class="cat dim">카페</div>
+        <div class="cat dim">2인</div>
+        <div class="cat dim">3인</div>
+      </div>
+      <div class="f-grid" id="feedGrid"></div>
+      <div class="f-credit">📌 출처: Pinterest 감성 큐레이션</div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast">
+    <div class="t-ic" id="toastIc">✅</div>
+    <div class="t-msg">
+      <strong id="toastTitle"></strong>
+      <span id="toastSub"></span>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept="image/*" onchange="loadRef(this)">
+</div>
+
+<script>
+let stream=null,facingMode='environment',overlayOn=false,refImage=null,capturedDataUrl=null;
+let currentRatioW=4,currentRatioH=5;
+const video=document.getElementById('videoEl');
+const refCanvas=document.getElementById('refCanvas');
+const ratioFrame=document.getElementById('ratioFrame');
+const sliderWrap=document.getElementById('sliderWrap');
+const opSlider=document.getElementById('opSlider');
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+}
+
+async function startCamera(){
+  showScreen('cam');
+  await initCamera();
+}
+
+async function initCamera(){
+  try{
+    if(stream)stream.getTracks().forEach(t=>t.stop());
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode,width:{ideal:1920},height:{ideal:1080}},audio:false
+    });
+    video.srcObject=stream;
+    document.getElementById('noCam').style.display='none';
+    video.style.display='block';
+    video.onloadedmetadata=()=>setTimeout(positionFrame,100);
+    setTimeout(positionFrame,400);
+  }catch(e){
+    video.style.display='none';
+    document.getElementById('noCam').style.display='flex';
+  }
+}
+
+function positionFrame(){
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const ratio=currentRatioW/currentRatioH;
+  let fw,fh;
+  if(vw/vh<ratio){fw=vw-20;fh=fw/ratio;}
+  else{fh=vh-110;fw=fh*ratio;}
+  const top=(vh-fh)/2-10,left=(vw-fw)/2;
+  const r=`position:absolute;top:${top}px;left:${left}px;width:${fw}px;height:${fh}px;border-radius:14px;overflow:hidden;pointer-events:none;`;
+  ratioFrame.style.cssText=r+(overlayOn?'border:2px solid rgba(232,64,42,.8);box-shadow:0 0 16px rgba(232,64,42,.2);':'');
+  refCanvas.style.cssText=`position:absolute;top:${top}px;left:${left}px;width:${fw}px;height:${fh}px;border-radius:12px;pointer-events:none;opacity:0;transition:opacity .3s;`;
+  refCanvas.width=Math.round(fw*window.devicePixelRatio);
+  refCanvas.height=Math.round(fh*window.devicePixelRatio);
+  refCanvas.style.width=fw+'px';refCanvas.style.height=fh+'px';
+  sliderWrap.style.bottom=(vh-top-fh-72)+'px';
+  if(overlayOn&&refImage){refCanvas.style.opacity=opSlider.value/100;drawOverlay();}
+}
+
+function setRatio(w,h,el){
+  document.querySelectorAll('.r-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  currentRatioW=w;currentRatioH=h;
+  setTimeout(positionFrame,50);
+}
+
+async function flipCamera(){
+  facingMode=facingMode==='environment'?'user':'environment';
+  await initCamera();
+}
+
+function toggleOverlay(){
+  overlayOn=!overlayOn;
+  const tog=document.getElementById('ovToggle');
+  const pip=document.getElementById('pip');
+  const lbl=document.getElementById('ovLabel');
+  if(overlayOn){
+    tog.classList.add('on');pip.classList.add('on');lbl.textContent='오버레이 ON';
+    sliderWrap.classList.add('vis');
+    ratioFrame.style.border='2px solid rgba(232,64,42,.8)';
+    ratioFrame.style.boxShadow='0 0 16px rgba(232,64,42,.2)';
+    if(refImage){refCanvas.style.opacity=opSlider.value/100;drawOverlay();}
+    else{showToast('📂','레퍼런스를 먼저 골라봐요','갤러리 또는 피드에서 선택해요','');}
+  }else{
+    tog.classList.remove('on');pip.classList.remove('on');lbl.textContent='오버레이';
+    sliderWrap.classList.remove('vis');
+    refCanvas.style.opacity='0';
+    ratioFrame.style.border='none';ratioFrame.style.boxShadow='none';
+  }
+}
+
+function updateOpacity(v){
+  document.getElementById('slVal').textContent=v+'%';
+  if(overlayOn&&refImage)refCanvas.style.opacity=v/100;
+}
+
+function drawOverlay(){
+  const ctx=refCanvas.getContext('2d');
+  ctx.clearRect(0,0,refCanvas.width,refCanvas.height);
+  ctx.drawImage(refImage,0,0,refCanvas.width,refCanvas.height);
+}
+
+function loadRef(input){
+  const file=input.files[0];if(!file)return;
+  const url=URL.createObjectURL(file);
+  const img=new Image();
+  img.onload=()=>{
+    refImage=img;
+    const thumb=document.getElementById('galleryThumb');
+    const emoji=document.getElementById('galleryEmoji');
+    thumb.src=url;thumb.style.display='block';emoji.style.display='none';
+    document.getElementById('galleryLabel').textContent='변경';
+    if(!overlayOn)toggleOverlay();
+    else{drawOverlay();refCanvas.style.opacity=opSlider.value/100;}
+    showToast('✅','레퍼런스 적용됐어요','불투명도 조절하면서 구도를 맞춰요','ok');
+  };
+  img.src=url;input.value='';
+}
+
+function capturePhoto(){
+  const fw=ratioFrame.offsetWidth||window.innerWidth-20;
+  const fh=ratioFrame.offsetHeight||fw*currentRatioH/currentRatioW;
+  const dpr=window.devicePixelRatio||1;
+  const capture=document.createElement('canvas');
+  capture.width=Math.round(fw*dpr);capture.height=Math.round(fh*dpr);
+  const ctx=capture.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const vr=ratioFrame.getBoundingClientRect();
+  if(video.videoWidth>0){
+    const scaleX=video.videoWidth/window.innerWidth;
+    const scaleY=video.videoHeight/window.innerHeight;
+    ctx.drawImage(video,vr.left*scaleX,vr.top*scaleY,vr.width*scaleX,vr.height*scaleY,0,0,fw,fh);
+  }else{
+    ctx.fillStyle='#1e1c1a';ctx.fillRect(0,0,fw,fh);
+  }
+  if(overlayOn&&refImage){
+    ctx.globalAlpha=opSlider.value/100;
+    ctx.drawImage(refImage,0,0,fw,fh);
+    ctx.globalAlpha=1;
+  }
+  ctx.font=`bold ${11*dpr}px Syne,sans-serif`;
+  ctx.fillStyle='rgba(242,237,232,0.4)';
+  ctx.textAlign='right';
+  ctx.fillText('Copycat',fw-10,fh-10);
+  capturedDataUrl=capture.toDataURL('image/jpeg',0.92);
+  document.getElementById('resultImg').src=capturedDataUrl;
+  showScreen('result');
+}
+
+function savePhoto(){
+  if(!capturedDataUrl)return;
+  const a=document.createElement('a');
+  a.href=capturedDataUrl;a.download='copycat_'+Date.now()+'.jpg';a.click();
+  showToast('✅','갤러리에 저장됐어요','언제든 다시 볼 수 있어요','ok');
+}
+
+function shareInstagram(){
+  showToast('📷','사진 저장 후 인스타그램에 올려봐요','저장 완료되면 인스타 앱을 열어요','');
+  setTimeout(()=>savePhoto(),600);
+}
+
+function goBack(){showScreen('cam');setTimeout(positionFrame,100);}
+
+function openFeed(){document.getElementById('feedBackdrop').classList.add('open');}
+function closeFeed(){document.getElementById('feedBackdrop').classList.remove('open');}
+function closeFeedOutside(e){if(e.target===document.getElementById('feedBackdrop'))closeFeed();}
+
+function buildFeed(){
+  const colors=[['#2a2520','#1e1a16'],['#1a1e1b','#222820'],['#1e1a1e','#28202a'],['#1c1e1a','#242820'],['#221e1b','#2e2520'],['#1a1c1e','#202428']];
+  const labels=['숲속 산책','카페 테라스','골든아워','도심 빌딩','해변 노을','꽃길 걷기'];
+  const grid=document.getElementById('feedGrid');grid.innerHTML='';
+  colors.forEach((c,i)=>{
+    const card=document.createElement('div');card.className='f-card';
+    const cv=document.createElement('canvas');cv.width=200;cv.height=267;
+    const ctx=cv.getContext('2d');
+    const g=ctx.createLinearGradient(0,0,200,267);
+    g.addColorStop(0,c[0]);g.addColorStop(1,c[1]);
+    ctx.fillStyle=g;ctx.fillRect(0,0,200,267);
+    ctx.fillStyle='rgba(242,237,232,0.18)';ctx.font='13px DM Sans,sans-serif';
+    ctx.textAlign='center';ctx.fillText(labels[i],100,134);
+    card.appendChild(cv);
+    const btn=document.createElement('div');btn.className='f-use';btn.textContent='이걸로 찍기';
+    card.appendChild(btn);
+    card.onclick=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        refImage=img;
+        if(!overlayOn)toggleOverlay();
+        else{drawOverlay();refCanvas.style.opacity=opSlider.value/100;}
+        closeFeed();
+        showToast('✅','레퍼런스 적용됐어요','불투명도 조절하면서 구도를 맞춰요','ok');
+      };
+      img.src=cv.toDataURL();
+    };
+    grid.appendChild(card);
+  });
+}
+
+let toastTimer=null;
+function showToast(ic,title,sub,type){
+  const t=document.getElementById('toast');
+  document.getElementById('toastIc').textContent=ic;
+  document.getElementById('toastTitle').textContent=title;
+  document.getElementById('toastSub').textContent=sub;
+  t.className='toast show'+(type==='ok'?' ok':'');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+window.addEventListener('resize',positionFrame);
+buildFeed();
+</script>
+</body>
+</html>
